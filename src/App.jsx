@@ -1,31 +1,11 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Activity, Archive, ArrowUpRight, BadgeCheck, BookOpen, ChevronRight,
   CircleHelp, Clock3, FilePlus2, Filter, FolderSearch, Link2, Plus,
   Search, ShieldCheck, Sparkles, Trash2, X
 } from "lucide-react";
 
-const starterCases = [
-  {
-    id: "case-demo-01",
-    name: "Sample Creator",
-    handle: "@samplecreator",
-    category: "Creator case study",
-    status: "Research in progress",
-    summary: "Illustrative case file showing how an analyst can separate a visible attention spike from a sustained change.",
-    verdict: "Inconclusive",
-    confidence: "Low",
-    updated: "Demo data",
-    events: [
-      { id: "ev-1", date: "2026-11-12", title: "Attention spike observed", type: "Signal", note: "Illustrative entry only. Replace with a dated, verifiable event and supporting source." },
-      { id: "ev-2", date: "2026-11-14", title: "Follow-up observation needed", type: "Open question", note: "Check whether attention persisted after the initial event." }
-    ],
-    evidence: [
-      { id: "src-1", title: "Example source — replace me", url: "https://example.com", kind: "External link", note: "Placeholder only. This is not evidence about a real creator." }
-    ],
-    notes: "Demo record. Do not treat this profile or its observations as real-world findings."
-  }
-];
+const starterCases = [];
 
 const blankCase = () => ({
   id: crypto.randomUUID(), name: "", handle: "", category: "Creator case study",
