@@ -1,6 +1,6 @@
-# AFTERMOTION
+# AFTER MOTION
 
-**An evidence-led creator investigation workspace.**
+**An evidence led creator investigation workspace.**
 
 AFTERMOTION helps researchers document the events behind a creator's changing cultural relevance. It is deliberately different from a leaderboard or a creator-picking engine: the core workflow is to build a case file, establish a dated timeline, attach public evidence, record alternative explanations, and make a confidence-qualified assessment.
 
