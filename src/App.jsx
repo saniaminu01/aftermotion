@@ -1,9 +1,8 @@
-
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   Activity, Archive, ArrowUpRight, BadgeCheck, BookOpen, ChevronRight,
   CircleHelp, Clock3, FilePlus2, Filter, FolderSearch, Link2, Plus,
-  Search, ShieldCheck, Sparkles, Trash2, X, LayoutDashboard
+  Search, ShieldCheck, Sparkles, Trash2, X, LayoutDashboard, Menu
 } from "lucide-react";
 
 const STORAGE_KEY = "aftermotion-cases-v1";
@@ -44,11 +43,16 @@ function loadCases() {
 
 function App() {
   const [cases, setCases] = useState(loadCases);
+  const [leaderboard, setLeaderboard] = useState([]);
+const [leaderboardUpdated, setLeaderboardUpdated] = useState(null);
+const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+const [leaderboardError, setLeaderboardError] = useState("");
   const [selectedId, setSelectedId] = useState(() => {
     const saved = loadCases();
     return saved[0]?.id || null;
   });
   const [view, setView] = useState("overview");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [query, setQuery] = useState("");
   const [evidenceQuery, setEvidenceQuery] = useState("");
@@ -68,6 +72,43 @@ function App() {
   });
 
   const selected = cases.find(c => c.id === selectedId) || cases[0] || null;
+
+  async function loadLeaderboard() {
+    setLeaderboardLoading(true);
+    setLeaderboardError("");
+
+    try {
+      const response = await fetch(
+        "https://leaderboard.motion.game/api/leaderboard",
+        { headers: { accept: "application/json" } }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setLeaderboard(Array.isArray(data.rows) ? data.rows : []);
+      setLeaderboardUpdated(data.capturedAt || data.asOf || null);
+    } catch (error) {
+      setLeaderboardError("Unable to load Motion's leaderboard. Please try again.");
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadLeaderboard();
+  }, []);
+
+  const trackedCreators = [
+    "Greg Isenberg", "Michael Saylor", "Ansem", "Naval",
+    "Balaji", "Tarek Mansour", "Brian Armstrong", "Nikita Bier", "xQc"
+  ];
+
+  const trackedLeaderboard = trackedCreators
+    .map(name => leaderboard.find(row => row.name.toLowerCase() === name.toLowerCase()))
+    .filter(Boolean);
 
   const filteredCases = useMemo(() => cases.filter(c =>
     `${c.name} ${c.handle} ${c.category}`.toLowerCase().includes(query.toLowerCase())
@@ -167,7 +208,7 @@ function App() {
   }
 
   function removeCase() {
-    if (!selected || !window.confirm(`Permanently delete "${selected.name}" and ALL its timeline events, evidence records and research notes? This action cannot be undone.`)) return;q
+    if (!selected || !window.confirm(`Permanently delete "${selected.name}" and ALL its timeline events, evidence records and research notes? This action cannot be undone.`)) return;
     const next = cases.filter(c => c.id !== selected.id);
     persist(next);
     setSelectedId(next[0]?.id || null);
@@ -374,6 +415,48 @@ function App() {
 
         <section className="dashboard-panel">
           <div className="dashboard-panel-head">
+            <div>
+              <h2>Motion leaderboard watch</h2>
+              <p>Live public leaderboard data for the nine-creator research cohort.</p>
+              {leaderboardUpdated && (
+                <small>Captured {new Date(leaderboardUpdated).toLocaleString()}</small>
+              )}
+            </div>
+            <button className="outline small" onClick={loadLeaderboard} disabled={leaderboardLoading}>
+              <Activity size={15} /> {leaderboardLoading ? "Refreshing…" : "Refresh leaderboard"}
+            </button>
+          </div>
+          {leaderboardError ? (
+            <div className="empty-inline">{leaderboardError}</div>
+          ) : trackedLeaderboard.length === 0 ? (
+            <div className="empty-inline">
+              {leaderboardLoading ? "Loading Motion leaderboard…" : "No leaderboard records loaded yet."}
+            </div>
+          ) : (
+            <div className="archive-list">
+              {trackedLeaderboard.map(row => (
+                <article className="archive-card" key={row.id}>
+                  <div className="evidence-icon"><Activity size={17} /></div>
+                  <div className="archive-card-copy">
+                    <b>{row.name}</b>
+                    <span>Current position: #{row.position}</span>
+                    <p>
+                      {row.delta > 0 ? `Up ${row.delta}` : row.delta < 0 ? `Down ${Math.abs(row.delta)}` : "No change"}
+                      {" · "}Baseline comparison
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+          <div className="notice">
+            <ShieldCheck size={16} />
+            <span>Source: Motion's public leaderboard endpoint. Movement is relative to Motion's supplied baseline, not an AFTERMOTION historical comparison.</span>
+          </div>
+        </section>
+
+        <section className="dashboard-panel">
+          <div className="dashboard-panel-head">
             <div><h2>Recent investigations</h2><p>Your creator cases and their current status.</p></div>
             <button className="text-link" onClick={() => setView("cases")}>View all cases <ArrowUpRight size={14} /></button>
           </div>
@@ -551,16 +634,28 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className={`sidebar ${mobileNavOpen ? "mobile-open" : ""}`}>
         <div className="brand">
           <div className="brand-mark">A.</div>
           <div><strong>AFTERMOTION</strong><span>INVESTIGATIVE INTELLIGENCE</span></div>
         </div>
         <div className="side-label">WORKSPACE</div>
-        <button className={`side-link ${view === "overview" ? "active" : ""}`} onClick={() => setView("overview")}><LayoutDashboard size={17} /> Overview</button>
-        <button className={`side-link ${view === "cases" ? "active" : ""}`} onClick={() => setView("cases")}><FolderSearch size={17} /> Case files <span className="count">{cases.length}</span></button>
-        <button className={`side-link ${view === "evidence" ? "active" : ""}`} onClick={() => setView("evidence")}><Archive size={17} /> Evidence vault <span className="count">{allEvidence.length}</span></button>
-        <button className={`side-link ${view === "research" ? "active" : ""}`} onClick={() => setView("research")}><BookOpen size={17} /> Research notes <span className="count">{allNotes.length}</span></button>
+        <button className={`side-link ${view === "overview" ? "active" : ""}`} onClick={() => {
+  setView("overview");
+  setMobileNavOpen(false);
+}}><LayoutDashboard size={17} /> Overview</button>
+        <button className={`side-link ${view === "cases" ? "active" : ""}`} onClick={() => {
+  setView("cases");
+  setMobileNavOpen(false);
+}}><FolderSearch size={17} /> Case files <span className="count">{cases.length}</span></button>
+        <button className={`side-link ${view === "evidence" ? "active" : ""}`} onClick={() => {
+  setView("evidence");
+  setMobileNavOpen(false);
+}}><Archive size={17} /> Evidence vault <span className="count">{allEvidence.length}</span></button>
+        <button className={`side-link ${view === "research" ? "active" : ""}`} onClick={() => {
+  setView("research");
+  setMobileNavOpen(false);
+}}><BookOpen size={17} /> Research notes <span className="count">{allNotes.length}</span></button>
         <div className="side-bottom">
           <div className="privacy-card"><ShieldCheck size={17} /><div><b>Evidence first</b><p>Separate documented facts from interpretation. Every claim should have a trail.</p></div></div>
           <div className="profile"><div className="avatar">A</div><div><b>Research workspace</b><span>Local project · Browser storage</span></div><CircleHelp size={16} /></div>
@@ -569,6 +664,16 @@ function App() {
 
       <main className="main">
         <header className="topbar">
+        <button
+  className="mobile-menu-toggle"
+  type="button"
+  aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
+  aria-expanded={mobileNavOpen}
+  onClick={() => setMobileNavOpen(open => !open)}
+>
+  <Menu size={18} />
+  <span>Menu</span>
+</button>
           <div className="crumb">Workspace <ChevronRight size={14} /> <b>{view === "overview" ? "Overview" : view === "cases" ? "Case files" : view === "evidence" ? "Evidence vault" : "Research notes"}</b></div>
           <div className="top-actions">
             <span className="local-badge"><span /> LOCAL DATA</span>

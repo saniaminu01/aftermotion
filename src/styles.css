@@ -213,11 +213,14 @@ textarea:focus-visible, select:focus-visible {
 }
 
 .topbar {
-  height: 72px;
+  min-height: 72px;
   border-bottom: 1px solid #302033;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 0;
 }
 
 .crumb {
@@ -895,13 +898,27 @@ textarea:focus-visible, select:focus-visible {
 }
 
 @media(max-width:600px) {
+    .mobile-menu-toggle {
+    display: inline-flex;
+  }
+
+  .topbar .crumb {
+    display: none;
+  }
+
   .app-shell { display: block; }
+
   .sidebar {
+    display: none;
     width: 100%;
     min-height: auto;
     padding: 17px 15px;
     border-right: 0;
     border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar.mobile-open {
+    display: flex;
   }
   .brand { padding: 0 3px 18px; }
   .side-label { display: none; }
@@ -1333,10 +1350,42 @@ textarea:focus-visible, select:focus-visible {
   .recent-row .recent-count { display: none; }
   .integrity-panel { padding: 22px; }
 }
+/* Mobile navigation */
+.mobile-menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: #241627;
+  color: var(--white);
+  font-family: Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: #302034;
+  border-color: #EC4B9A;
+}
+
 .signature {
   color: #EC4B9A;
   font-family: Inter, sans-serif;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: .3px;
+}
+@media (max-width: 600px) {
+  .mobile-menu-toggle {
+    display: inline-flex;
+  }
+
+  .sidebar.mobile-open {
+    display: flex;
+  }
 }
