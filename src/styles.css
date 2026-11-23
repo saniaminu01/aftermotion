@@ -1574,3 +1574,37 @@ textarea:focus-visible, select:focus-visible {
     flex-direction: column;
   }
 }
+
+/* AFTERMOTION activity log */
+.activity-log-list {
+  padding: 8px 24px 20px;
+}
+.activity-log-item {
+  display: flex;
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border, #e8e5ee);
+}
+.activity-log-item:last-child { border-bottom: 0; }
+.activity-log-marker {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-soft, #f3f0f8);
+  color: var(--violet, #7861a8);
+}
+.activity-log-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.activity-log-copy b { font-size: 14px; font-weight: 600; }
+.activity-log-copy span,
+.activity-log-copy time { color: var(--muted, #777); font-size: 12px; }
+@media(max-width: 600px) {
+  .activity-log-list { padding: 4px 16px 16px; }
+}

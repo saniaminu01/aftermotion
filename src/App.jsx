@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 
 const STORAGE_KEY = "aftermotion-cases-v1";
+const ACTIVITY_KEY = "aftermotion-activity-log-v1";
 const starterCases = [];
 
 const blankCase = () => ({
@@ -43,6 +44,15 @@ function loadCases() {
 
 function App() {
   const [cases, setCases] = useState(loadCases);
+  const [activityLog, setActivityLog] = useState(() => {
+    try {
+      const saved = localStorage.getItem(ACTIVITY_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [activityFilter, setActivityFilter] = useState("all");
   const [leaderboard, setLeaderboard] = useState([]);
 const [leaderboardUpdated, setLeaderboardUpdated] = useState(null);
 const [leaderboardLoading, setLeaderboardLoading] = useState(false);
@@ -187,6 +197,22 @@ const [leaderboardError, setLeaderboardError] = useState("");
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
 
+  function recordActivity(action, description, caseId = selected?.id || null, caseName = selected?.name || "Workspace") {
+    const entry = {
+      id: crypto.randomUUID(),
+      action,
+      description,
+      caseId,
+      caseName,
+      timestamp: new Date().toISOString()
+    };
+    setActivityLog(current => {
+      const next = [entry, ...current].slice(0, 500);
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
   function downloadFile(content, filename, type) {
     const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
@@ -205,7 +231,8 @@ const [leaderboardError, setLeaderboardError] = useState("");
       version: 1,
       exportedAt: new Date().toISOString(),
       cases,
-      leaderboardSnapshots: snapshots
+      leaderboardSnapshots: snapshots,
+      activityLog
     };
 
     downloadFile(
@@ -266,6 +293,9 @@ const [leaderboardError, setLeaderboardError] = useState("");
 
       setCases(backup.cases);
       setSnapshots(backup.leaderboardSnapshots);
+      const restoredActivity = Array.isArray(backup.activityLog) ? backup.activityLog : [];
+      setActivityLog(restoredActivity);
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(restoredActivity));
       setSelectedId(backup.cases[0]?.id || null);
       setBackupNotice("Backup restored successfully.");
     } catch (error) {
@@ -300,6 +330,16 @@ const [leaderboardError, setLeaderboardError] = useState("");
   }
 
   function updateCase(id, patch) {
+    const target = cases.find(c => c.id === id);
+    if (!target) return;
+
+    if (Object.prototype.hasOwnProperty.call(patch, "verdict") && patch.verdict !== target.verdict) {
+      recordActivity("assessment", `Verdict changed to ${patch.verdict}`, id, target.name);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "confidence") && patch.confidence !== target.confidence) {
+      recordActivity("assessment", `Confidence changed to ${patch.confidence}`, id, target.name);
+    }
+
     persist(cases.map(c => c.id === id
       ? { ...c, ...patch, updated: "Just now" }
       : c
@@ -322,6 +362,7 @@ const [leaderboardError, setLeaderboardError] = useState("");
     if (!draft.name.trim()) return;
     const next = [draft, ...cases];
     persist(next);
+    recordActivity("case", `Investigation created: ${draft.name}`, draft.id, draft.name);
     setSelectedId(draft.id);
     setDraft(blankCase());
     setShowNew(false);
@@ -339,6 +380,7 @@ const [leaderboardError, setLeaderboardError] = useState("");
         id: crypto.randomUUID()
       }].sort((a, b) => a.date.localeCompare(b.date))
     });
+    recordActivity("timeline", `Timeline event added: ${eventDraft.title}`);
 
     setEventDraft({
       date: new Date().toISOString().slice(0, 10),
@@ -357,6 +399,7 @@ const [leaderboardError, setLeaderboardError] = useState("");
         id: crypto.randomUUID()
       }]
     });
+    recordActivity("evidence", `Evidence added: ${evidenceDraft.title}`);
 
     setEvidenceDraft({ title: "", url: "", kind: "External link", note: "" });
     setShowEvidence(false);
@@ -366,15 +409,21 @@ const [leaderboardError, setLeaderboardError] = useState("");
     if (!selected || !window.confirm(`Permanently delete "${selected.name}" and ALL its timeline events, evidence records and research notes? This action cannot be undone.`)) return;
     const next = cases.filter(c => c.id !== selected.id);
     persist(next);
+    recordActivity("case", `Investigation deleted: ${selected.name}`, selected.id, selected.name);
     setSelectedId(next[0]?.id || null);
   }
 
   function removeItem(key, id, caseId = selected?.id) {
     const target = cases.find(c => c.id === caseId);
     if (!target) return;
+    const removed = target[key].find(item => item.id === id);
+    if (!removed) return;
     updateCase(caseId, {
       [key]: target[key].filter(item => item.id !== id)
     });
+    const label = key === "events" ? "Timeline event" : "Evidence";
+    recordActivity(key === "events" ? "timeline" : "evidence",
+      `${label} removed: ${removed.title || "Untitled"}`, caseId, target.name);
   }
 
   function startNewCase() {
@@ -907,6 +956,10 @@ const [leaderboardError, setLeaderboardError] = useState("");
   setView("research");
   setMobileNavOpen(false);
 }}><BookOpen size={17} /> Research notes <span className="count">{allNotes.length}</span></button>
+        <button className={`side-link ${view === "activity" ? "active" : ""}`} onClick={() => {
+  setView("activity");
+  setMobileNavOpen(false);
+}}><Activity size={17} /> Activity log <span className="count">{activityLog.length}</span></button>
         <button className={`side-link ${view === "data" ? "active" : ""}`} onClick={() => {
   setView("data");
   setMobileNavOpen(false);
@@ -929,7 +982,7 @@ const [leaderboardError, setLeaderboardError] = useState("");
   <Menu size={18} />
   <span>Menu</span>
 </button>
-          <div className="crumb">Workspace <ChevronRight size={14} /> <b>{view === "overview" ? "Overview" : view === "cases" ? "Case files" : view === "evidence" ? "Evidence vault" : view === "research" ? "Research notes" : "Data management"}</b></div>
+          <div className="crumb">Workspace <ChevronRight size={14} /> <b>{view === "overview" ? "Overview" : view === "cases" ? "Case files" : view === "evidence" ? "Evidence vault" : view === "research" ? "Research notes" : view === "activity" ? "Activity log" : "Data management"}</b></div>
           <div className="top-actions">
             <span className="local-badge"><span /> LOCAL DATA</span>
             <button className="primary small" onClick={startNewCase}><Plus size={16} /> New investigation</button>
@@ -948,6 +1001,47 @@ const [leaderboardError, setLeaderboardError] = useState("");
         )}
         {view === "evidence" && <div className="view-content">{renderEvidenceVault()}</div>}
         {view === "research" && <div className="view-content">{renderResearchNotes()}</div>}
+        {view === "activity" && (
+          <div className="view-content">
+            <section className="page-heading">
+              <div>
+                <div className="eyebrow">WORKSPACE / AUDIT TRAIL</div>
+                <h1>Activity <em>log.</em></h1>
+                <p>A chronological record of changes made to your investigations.</p>
+              </div>
+            </section>
+            <section className="dashboard-panel">
+              <div className="dashboard-panel-head">
+                <div><h2>Workspace history</h2><p>{activityLog.length} recorded actions · newest first</p></div>
+                <select value={activityFilter} onChange={e => setActivityFilter(e.target.value)}>
+                  <option value="all">All activity</option>
+                  <option value="case">Investigations</option>
+                  <option value="timeline">Timeline</option>
+                  <option value="evidence">Evidence</option>
+                  <option value="assessment">Assessments</option>
+                </select>
+              </div>
+              <div className="activity-log-list">
+                {activityLog.filter(item => activityFilter === "all" || item.action === activityFilter).length === 0 ? (
+                  <div className="dashboard-empty">
+                    <Activity size={28} />
+                    <h3>No activity recorded yet</h3>
+                    <p>Changes to investigations, evidence, timelines and assessments will appear here.</p>
+                  </div>
+                ) : activityLog.filter(item => activityFilter === "all" || item.action === activityFilter).map(item => (
+                  <article className="activity-log-item" key={item.id}>
+                    <div className="activity-log-marker"><Activity size={15} /></div>
+                    <div className="activity-log-copy">
+                      <b>{item.description}</b>
+                      <span>{item.caseName}</span>
+                      <time dateTime={item.timestamp}>{new Date(item.timestamp).toLocaleString()}</time>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
         {view === "data" && (
           <div className="view-content">
             <section className="page-heading">
