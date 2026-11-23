@@ -1523,3 +1523,54 @@ textarea:focus-visible, select:focus-visible {
     gap: 4px;
   }
 }
+
+
+/* Data management */
+.backup-panel {
+  margin-bottom: 20px;
+}
+
+.backup-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.backup-card b {
+  color: var(--white);
+  font-size: 13px;
+}
+
+.backup-card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.backup-import {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.backup-import input {
+  display: none;
+}
+
+.backup-notice {
+  margin-bottom: 18px;
+}
+
+@media (max-width: 600px) {
+  .backup-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

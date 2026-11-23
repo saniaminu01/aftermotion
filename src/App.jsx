@@ -56,6 +56,7 @@ const [leaderboardError, setLeaderboardError] = useState("");
     }
   });
   const [snapshotNotice, setSnapshotNotice] = useState("");
+  const [backupNotice, setBackupNotice] = useState("");
   const [selectedId, setSelectedId] = useState(() => {
     const saved = loadCases();
     return saved[0]?.id || null;
@@ -184,6 +185,118 @@ const [leaderboardError, setLeaderboardError] = useState("");
   function persist(next) {
     setCases(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }
+
+  function downloadFile(content, filename, type) {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportBackup() {
+    const backup = {
+      app: "AFTERMOTION",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      cases,
+      leaderboardSnapshots: snapshots
+    };
+
+    downloadFile(
+      JSON.stringify(backup, null, 2),
+      `aftermotion-backup-${new Date().toISOString().slice(0, 10)}.json`,
+      "application/json"
+    );
+    setBackupNotice("Backup exported successfully.");
+  }
+
+  async function importBackup(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const backup = JSON.parse(await file.text());
+
+      const validCases = backup?.app === "AFTERMOTION" &&
+        backup?.version === 1 &&
+        Array.isArray(backup.cases) &&
+        backup.cases.every(item =>
+          item && typeof item === "object" &&
+          typeof item.id === "string" &&
+          typeof item.name === "string" &&
+          Array.isArray(item.events) &&
+          Array.isArray(item.evidence) &&
+          typeof item.notes === "string"
+        );
+
+      const validSnapshots = Array.isArray(backup?.leaderboardSnapshots) &&
+        backup.leaderboardSnapshots.length <= 100 &&
+        backup.leaderboardSnapshots.every(snapshot =>
+          snapshot && typeof snapshot.id === "string" &&
+          typeof snapshot.capturedAt === "string" &&
+          Array.isArray(snapshot.creators) &&
+          snapshot.creators.every(creator =>
+            creator && typeof creator.name === "string" &&
+            Number.isFinite(creator.position)
+          )
+        );
+
+      if (!validCases || !validSnapshots) {
+        throw new Error("This file is not a valid AFTERMOTION backup.");
+      }
+
+      if (!window.confirm(
+        "Restore this backup? Your current investigations and leaderboard snapshots will be replaced."
+      )) {
+        setBackupNotice("Import cancelled. Your existing data was not changed.");
+        return;
+      }
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(backup.cases));
+      localStorage.setItem(
+        "aftermotion-leaderboard-snapshots-v1",
+        JSON.stringify(backup.leaderboardSnapshots)
+      );
+
+      setCases(backup.cases);
+      setSnapshots(backup.leaderboardSnapshots);
+      setSelectedId(backup.cases[0]?.id || null);
+      setBackupNotice("Backup restored successfully.");
+    } catch (error) {
+      setBackupNotice(error.message || "Unable to read this backup file.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  function exportSnapshotsCsv() {
+    const rows = [
+      ["Captured at", "Creator", "Position"],
+      ...snapshots.flatMap(snapshot =>
+        snapshot.creators.map(creator => [
+          snapshot.capturedAt,
+          creator.name,
+          creator.position
+        ])
+      )
+    ];
+
+    const csv = rows.map(row =>
+      row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(",")
+    ).join("\r\n");
+
+    downloadFile(
+      "\uFEFF" + csv,
+      `aftermotion-leaderboard-${new Date().toISOString().slice(0, 10)}.csv`,
+      "text/csv;charset=utf-8"
+    );
+    setBackupNotice("Leaderboard CSV exported successfully.");
   }
 
   function updateCase(id, patch) {
@@ -794,6 +907,10 @@ const [leaderboardError, setLeaderboardError] = useState("");
   setView("research");
   setMobileNavOpen(false);
 }}><BookOpen size={17} /> Research notes <span className="count">{allNotes.length}</span></button>
+        <button className={`side-link ${view === "data" ? "active" : ""}`} onClick={() => {
+  setView("data");
+  setMobileNavOpen(false);
+}}><FilePlus2 size={17} /> Data management</button>
         <div className="side-bottom">
           <div className="privacy-card"><ShieldCheck size={17} /><div><b>Evidence first</b><p>Separate documented facts from interpretation. Every claim should have a trail.</p></div></div>
           <div className="profile"><div className="avatar">A</div><div><b>Research workspace</b><span>Local project · Browser storage</span></div><CircleHelp size={16} /></div>
@@ -812,7 +929,7 @@ const [leaderboardError, setLeaderboardError] = useState("");
   <Menu size={18} />
   <span>Menu</span>
 </button>
-          <div className="crumb">Workspace <ChevronRight size={14} /> <b>{view === "overview" ? "Overview" : view === "cases" ? "Case files" : view === "evidence" ? "Evidence vault" : "Research notes"}</b></div>
+          <div className="crumb">Workspace <ChevronRight size={14} /> <b>{view === "overview" ? "Overview" : view === "cases" ? "Case files" : view === "evidence" ? "Evidence vault" : view === "research" ? "Research notes" : "Data management"}</b></div>
           <div className="top-actions">
             <span className="local-badge"><span /> LOCAL DATA</span>
             <button className="primary small" onClick={startNewCase}><Plus size={16} /> New investigation</button>
@@ -831,6 +948,78 @@ const [leaderboardError, setLeaderboardError] = useState("");
         )}
         {view === "evidence" && <div className="view-content">{renderEvidenceVault()}</div>}
         {view === "research" && <div className="view-content">{renderResearchNotes()}</div>}
+        {view === "data" && (
+          <div className="view-content">
+            <section className="page-heading">
+              <div>
+                <div className="eyebrow">WORKSPACE / DATA CONTROL</div>
+                <h1>Data <em>management.</em></h1>
+                <p>Back up, restore and export your AFTERMOTION research records.</p>
+              </div>
+            </section>
+
+            {backupNotice && <div className="notice backup-notice">{backupNotice}</div>}
+
+            <section className="dashboard-panel backup-panel">
+              <div className="dashboard-panel-head">
+                <div>
+                  <h2>Full workspace backup</h2>
+                  <p>Export your investigations, timelines, evidence, notes and leaderboard history.</p>
+                </div>
+              </div>
+              <div className="backup-card">
+                <div>
+                  <b>Export backup</b>
+                  <p>Download all workspace records as a versioned JSON file.</p>
+                </div>
+                <button className="primary small" onClick={exportBackup}>
+                  <Archive size={15} /> Export JSON backup
+                </button>
+              </div>
+              <div className="backup-card">
+                <div>
+                  <b>Restore from backup</b>
+                  <p>Import an AFTERMOTION JSON backup. This replaces the current local records after confirmation.</p>
+                </div>
+                <label className="outline small backup-import">
+                  <FilePlus2 size={15} /> Choose backup file
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={importBackup}
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section className="dashboard-panel backup-panel">
+              <div className="dashboard-panel-head">
+                <div>
+                  <h2>Leaderboard data export</h2>
+                  <p>Download saved creator positions for spreadsheet analysis.</p>
+                </div>
+              </div>
+              <div className="backup-card">
+                <div>
+                  <b>Export snapshot history</b>
+                  <p>{snapshots.length} saved captures · CSV format</p>
+                </div>
+                <button
+                  className="outline small"
+                  onClick={exportSnapshotsCsv}
+                  disabled={snapshots.length === 0}
+                >
+                  <Archive size={15} /> Export CSV
+                </button>
+              </div>
+            </section>
+
+            <div className="notice">
+              <ShieldCheck size={16} />
+              <span>Data is stored in this browser. Keep exported backups somewhere safe. Restoring a backup replaces the current local records.</span>
+            </div>
+          </div>
+        )}
 
         
 <footer className="footer">
