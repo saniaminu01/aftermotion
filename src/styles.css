@@ -1389,3 +1389,137 @@ textarea:focus-visible, select:focus-visible {
     display: flex;
   }
 }
+
+/* Leaderboard snapshot history */
+.leaderboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.snapshot-count {
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.snapshot-notice {
+  margin: 0 18px 14px;
+  color: var(--green);
+  font-size: 12px;
+}
+
+.snapshot-latest {
+  margin: 0 18px 20px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(16, 11, 21, .35);
+}
+
+.snapshot-latest-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.snapshot-latest-head h3 {
+  margin: 7px 0 0;
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.snapshot-table {
+  display: grid;
+  gap: 0;
+}
+
+.snapshot-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 90px minmax(110px, .8fr);
+  align-items: center;
+  gap: 12px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.snapshot-table-head {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+}
+
+.snapshot-creator {
+  color: var(--white);
+  font-weight: 600;
+}
+
+.snapshot-row strong {
+  color: var(--white);
+  font-variant-numeric: tabular-nums;
+}
+
+.snapshot-up {
+  color: var(--green);
+}
+
+.snapshot-down {
+  color: #E99A9A;
+}
+
+.snapshot-neutral {
+  color: var(--muted);
+}
+
+.snapshot-comparison-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.snapshot-archive {
+  margin: 0 18px 20px;
+}
+
+.snapshot-archive > .mono-label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.snapshot-history-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (max-width: 600px) {
+  .leaderboard-actions {
+    width: 100%;
+  }
+
+  .snapshot-row {
+    grid-template-columns: minmax(90px, 1fr) 55px minmax(90px, .8fr);
+    gap: 7px;
+    font-size: 11px;
+  }
+
+  .snapshot-latest {
+    margin: 0 12px 16px;
+    padding: 13px;
+  }
+
+  .snapshot-history-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

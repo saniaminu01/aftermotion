@@ -47,6 +47,15 @@ function App() {
 const [leaderboardUpdated, setLeaderboardUpdated] = useState(null);
 const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 const [leaderboardError, setLeaderboardError] = useState("");
+  const [snapshots, setSnapshots] = useState(() => {
+    try {
+      const saved = localStorage.getItem("aftermotion-leaderboard-snapshots-v1");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [snapshotNotice, setSnapshotNotice] = useState("");
   const [selectedId, setSelectedId] = useState(() => {
     const saved = loadCases();
     return saved[0]?.id || null;
@@ -101,6 +110,17 @@ const [leaderboardError, setLeaderboardError] = useState("");
     loadLeaderboard();
   }, []);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "aftermotion-leaderboard-snapshots-v1",
+        JSON.stringify(snapshots)
+      );
+    } catch {
+      setSnapshotNotice("Could not save snapshot history in this browser.");
+    }
+  }, [snapshots]);
+
   const trackedCreators = [
     "Greg Isenberg", "Michael Saylor", "Ansem", "Naval",
     "Balaji", "Tarek Mansour", "Brian Armstrong", "Nikita Bier", "xQc"
@@ -109,6 +129,28 @@ const [leaderboardError, setLeaderboardError] = useState("");
   const trackedLeaderboard = trackedCreators
     .map(name => leaderboard.find(row => row.name.toLowerCase() === name.toLowerCase()))
     .filter(Boolean);
+
+  function captureLeaderboardSnapshot() {
+    if (trackedLeaderboard.length === 0) {
+      setSnapshotNotice("No leaderboard data is available to capture yet.");
+      return;
+    }
+
+    const snapshot = {
+      id: `${Date.now()}`,
+      capturedAt: new Date().toISOString(),
+      creators: trackedLeaderboard.map(row => ({
+        name: row.name,
+        position: Number(row.position)
+      }))
+    };
+
+    setSnapshots(current => [snapshot, ...current].slice(0, 100));
+    setSnapshotNotice("Snapshot saved in this browser.");
+  }
+
+  const latestSnapshot = snapshots[0] || null;
+  const previousSnapshot = snapshots[1] || null;
 
   const filteredCases = useMemo(() => cases.filter(c =>
     `${c.name} ${c.handle} ${c.category}`.toLowerCase().includes(query.toLowerCase())
@@ -422,9 +464,18 @@ const [leaderboardError, setLeaderboardError] = useState("");
                 <small>Captured {new Date(leaderboardUpdated).toLocaleString()}</small>
               )}
             </div>
-            <button className="outline small" onClick={loadLeaderboard} disabled={leaderboardLoading}>
-              <Activity size={15} /> {leaderboardLoading ? "Refreshing…" : "Refresh leaderboard"}
-            </button>
+            <div className="leaderboard-actions">
+              <button
+                className="outline small"
+                onClick={captureLeaderboardSnapshot}
+                disabled={trackedLeaderboard.length === 0}
+              >
+                <Archive size={15} /> Capture snapshot
+              </button>
+              <button className="outline small" onClick={loadLeaderboard} disabled={leaderboardLoading}>
+                <Activity size={15} /> {leaderboardLoading ? "Refreshing…" : "Refresh leaderboard"}
+              </button>
+            </div>
           </div>
           {leaderboardError ? (
             <div className="empty-inline">{leaderboardError}</div>
@@ -452,6 +503,93 @@ const [leaderboardError, setLeaderboardError] = useState("");
           <div className="notice">
             <ShieldCheck size={16} />
             <span>Source: Motion's public leaderboard endpoint. Movement is relative to Motion's supplied baseline, not an AFTERMOTION historical comparison.</span>
+          </div>
+        </section>
+
+        <section className="dashboard-panel snapshot-panel">
+          <div className="dashboard-panel-head">
+            <div>
+              <h2>Leaderboard snapshot history</h2>
+              <p>Compare creator positions across your manually saved captures.</p>
+            </div>
+            <span className="snapshot-count">{snapshots.length} / 100 saved</span>
+          </div>
+
+          {snapshotNotice && <p className="snapshot-notice">{snapshotNotice}</p>}
+
+          {!latestSnapshot ? (
+            <div className="empty-inline">
+              No snapshots saved yet. Capture the leaderboard to begin building your own history.
+            </div>
+          ) : (
+            <>
+              <div className="snapshot-latest">
+                <div className="snapshot-latest-head">
+                  <div>
+                    <span className="mono-label">LATEST CAPTURE</span>
+                    <h3>{new Date(latestSnapshot.capturedAt).toLocaleString()}</h3>
+                  </div>
+                  <span className="snapshot-count">
+                    {latestSnapshot.creators.length} creators
+                  </span>
+                </div>
+
+                <div className="snapshot-table">
+                  <div className="snapshot-row snapshot-table-head">
+                    <span>Creator</span>
+                    <span>Position</span>
+                    <span>Change</span>
+                  </div>
+                  {latestSnapshot.creators.map(creator => {
+                    const previous = previousSnapshot?.creators.find(
+                      item => item.name === creator.name
+                    );
+                    const movement = previous
+                      ? previous.position - creator.position
+                      : null;
+
+                    return (
+                      <div className="snapshot-row" key={creator.name}>
+                        <span className="snapshot-creator">{creator.name}</span>
+                        <strong>#{creator.position}</strong>
+                        <span className={
+                          movement === null ? "snapshot-neutral" :
+                          movement > 0 ? "snapshot-up" :
+                          movement < 0 ? "snapshot-down" : "snapshot-neutral"
+                        }>
+                          {movement === null ? "First capture" :
+                            movement > 0 ? `↑ ${movement} places` :
+                            movement < 0 ? `↓ ${Math.abs(movement)} places` :
+                            "No change"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="snapshot-comparison-note">
+                  {previousSnapshot
+                    ? `Compared with the previous capture from ${new Date(previousSnapshot.capturedAt).toLocaleString()}.`
+                    : "Save another snapshot to see rank movement over time."}
+                </p>
+              </div>
+
+              {snapshots.length > 1 && (
+                <div className="snapshot-archive">
+                  <span className="mono-label">PREVIOUS CAPTURES</span>
+                  {snapshots.slice(1).map(snapshot => (
+                    <div className="snapshot-history-row" key={snapshot.id}>
+                      <span>{new Date(snapshot.capturedAt).toLocaleString()}</span>
+                      <span>{snapshot.creators.length} creators recorded</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          <div className="notice">
+            <ShieldCheck size={16} />
+            <span>Snapshots are manually captured and stored locally in this browser. They are not synced across devices.</span>
           </div>
         </section>
 
