@@ -1608,3 +1608,38 @@ textarea:focus-visible, select:focus-visible {
 @media(max-width: 600px) {
   .activity-log-list { padding: 4px 16px 16px; }
 }
+
+/* Claim-to-evidence relationships */
+.claim-link-fields {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border, #e8e5ee);
+  border-radius: 10px;
+  background: var(--surface-soft, #faf9fc);
+}
+.claim-link-display {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border, #e8e5ee);
+  border-radius: 8px;
+}
+.claim-link-display > b,
+.claim-link-display > small {
+  font-size: 11px;
+  color: var(--muted, #777);
+}
+.claim-link-display > p { margin: 0; font-size: 13px; }
+.claim-relationship {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #eeeaf5;
+  color: #66518a;
+}
+.claim-relationship.supports { background: #e8f3ec; color: #28643e; }
+.claim-relationship.challenges { background: #f8eaea; color: #963e3e; }

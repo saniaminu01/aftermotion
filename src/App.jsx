@@ -88,7 +88,7 @@ const [leaderboardError, setLeaderboardError] = useState("");
     title: "", type: "Signal", note: ""
   });
   const [evidenceDraft, setEvidenceDraft] = useState({
-    title: "", url: "", kind: "External link", note: ""
+    title: "", url: "", kind: "External link", note: "", claim: "", relationship: "Context", rationale: ""
   });
 
   const selected = cases.find(c => c.id === selectedId) || cases[0] || null;
@@ -399,9 +399,15 @@ const [leaderboardError, setLeaderboardError] = useState("");
         id: crypto.randomUUID()
       }]
     });
-    recordActivity("evidence", `Evidence added: ${evidenceDraft.title}`);
+    recordActivity(
+      "evidence",
+      `Evidence added: ${evidenceDraft.title}${evidenceDraft.claim.trim() ? ` · ${evidenceDraft.relationship} claim: ${evidenceDraft.claim.trim()}` : ""}`
+    );
 
-    setEvidenceDraft({ title: "", url: "", kind: "External link", note: "" });
+    setEvidenceDraft({
+      title: "", url: "", kind: "External link", note: "",
+      claim: "", relationship: "Context", rationale: ""
+    });
     setShowEvidence(false);
   }
 
@@ -573,6 +579,11 @@ const [leaderboardError, setLeaderboardError] = useState("");
                       <b>{src.title}</b><span>{src.kind}</span>
                       <a href={src.url} target="_blank" rel="noreferrer">{src.url} <ArrowUpRight size={12} /></a>
                       {src.note && <p>{src.note}</p>}
+                      {src.claim && <div className="claim-link-display">
+                        <b>CLAIM</b><p>{src.claim}</p>
+                        <span className={`claim-relationship ${src.relationship?.toLowerCase() || "context"}`}>{src.relationship || "Context"}</span>
+                        {src.rationale && <small>{src.rationale}</small>}
+                      </div>}
                     </div>
                     <button className="tiny-delete" onClick={() => removeItem("evidence", src.id)} title="Remove source"><X size={14} /></button>
                   </div>
@@ -862,6 +873,11 @@ const [leaderboardError, setLeaderboardError] = useState("");
                     <span>{item.kind} · {item.caseName}</span>
                     <a href={item.url} target="_blank" rel="noreferrer">{item.url} <ArrowUpRight size={12} /></a>
                     {item.note && <p>{item.note}</p>}
+                    {item.claim && <div className="claim-link-display">
+                      <b>CLAIM</b><p>{item.claim}</p>
+                      <span className={`claim-relationship ${item.relationship?.toLowerCase() || "context"}`}>{item.relationship || "Context"}</span>
+                      {item.rationale && <small>{item.rationale}</small>}
+                    </div>}
                   </div>
                   <button className="text-link" onClick={() => openCase(item.caseId, "evidence")}>Open case</button>
                   <button className="tiny-delete" title="Delete evidence" onClick={() => {
@@ -1156,7 +1172,15 @@ const [leaderboardError, setLeaderboardError] = useState("");
             <label>Source title<input autoFocus required value={evidenceDraft.title} onChange={e => setEvidenceDraft({ ...evidenceDraft, title: e.target.value })} placeholder="Post, article or public source title" /></label>
             <label>Source URL<input type="url" required value={evidenceDraft.url} onChange={e => setEvidenceDraft({ ...evidenceDraft, url: e.target.value })} placeholder="https://" /></label>
             <label>Source type<select value={evidenceDraft.kind} onChange={e => setEvidenceDraft({ ...evidenceDraft, kind: e.target.value })}><option>External link</option><option>X post</option><option>News article</option><option>Video</option><option>Official announcement</option><option>Other</option></select></label>
-            <label>What does it support?<textarea value={evidenceDraft.note} onChange={e => setEvidenceDraft({ ...evidenceDraft, note: e.target.value })} placeholder="Briefly explain why this source matters." /></label>
+            <label>Source note<textarea value={evidenceDraft.note} onChange={e => setEvidenceDraft({ ...evidenceDraft, note: e.target.value })} placeholder="Summarize what the source contains." /></label>
+            <div className="claim-link-fields">
+              <div className="eyebrow">CLAIM-TO-EVIDENCE LINK</div>
+              <label>Claim being investigated<textarea value={evidenceDraft.claim} onChange={e => setEvidenceDraft({ ...evidenceDraft, claim: e.target.value })} placeholder="What specific statement does this source relate to?" /></label>
+              <label>Relationship<select value={evidenceDraft.relationship} onChange={e => setEvidenceDraft({ ...evidenceDraft, relationship: e.target.value })}>
+                <option>Supports</option><option>Challenges</option><option>Context</option>
+              </select></label>
+              <label>Analyst rationale<textarea value={evidenceDraft.rationale} onChange={e => setEvidenceDraft({ ...evidenceDraft, rationale: e.target.value })} placeholder="Explain how the source supports, challenges or contextualizes the claim." /></label>
+            </div>
             <div className="modal-actions"><button type="button" className="outline" onClick={() => setShowEvidence(false)}>Cancel</button><button className="primary" type="submit">Save source</button></div>
           </form>
         </Modal>
